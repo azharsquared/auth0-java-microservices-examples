@@ -33,7 +33,13 @@ public class ApiGatewayApplication {
             .route(path("/home/**"), http())
             .filter(lb("car-service"))
             .filter(tokenRelay())
-            .build();
+            .build().and(
+                    route("bus-service")
+                .route(path("/bus/**"), http())
+                .filter(lb("bus-service"))
+                .filter(tokenRelay())
+                .build()
+                );
     }
 
     public static void main(String[] args) {
@@ -47,7 +53,7 @@ record Car(String name) {
 @FeignClient(name = "car-service", fallback = Fallback.class)
 interface CarClient {
 
-    @GetMapping("/cars")
+    @GetMapping("/home")
     CollectionModel<Car> readCars();
 
 }
@@ -85,4 +91,39 @@ class CoolCarController {
             !car.name().equals("Ford Pinto") &&
             !car.name().equals("Yugo GV");
     }
+}
+
+
+@RestController
+class CoolBusController {
+
+    private final BusClient busClient;
+
+    public CoolBusController(BusClient busClient) {
+        this.busClient = busClient;
+    }
+
+    @GetMapping("/cool-bus")
+    public Collection<Car> coolCars() {
+        return busClient.readCars()
+                .getContent()
+                .stream()
+                .filter(this::isCool)
+                .collect(Collectors.toList());
+    }
+
+    private boolean isCool(Car car) {
+        return !car.name().equals("AMC Gremlin") &&
+                !car.name().equals("Triumph Stag") &&
+                !car.name().equals("Ford Pinto") &&
+                !car.name().equals("Yugo GV");
+    }
+}
+
+@FeignClient(name = "bus-service", fallback = Fallback.class)
+interface BusClient {
+
+    @GetMapping("/bus")
+    CollectionModel<Car> readCars();
+
 }
